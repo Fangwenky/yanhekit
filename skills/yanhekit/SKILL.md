@@ -5,7 +5,7 @@ description: Download Yanhekt (延河课堂, aita.yanhekt.cn) lecture recordings
 
 # Yanhekit
 
-Every step is a command of `scripts/yanhekit.py` in this skill's folder. Run it with `uv run` and its absolute path from the user's workspace, since output goes to the current folder by default; uv installs the script's packages on first use. Without uv, install the packages listed at the top of the script for Python 3.11 or later and run it with `python`. Recording and audio steps need `ffmpeg` on PATH.
+Resolve this skill's folder from the loaded `SKILL.md` path, then set `YANHEKIT` to the absolute path of its `scripts/yanhekit.py`. Every command below uses that path. Run from the user's workspace, since output goes to the current folder by default; uv installs the script's packages on first use. Without uv, install the packages listed at the top of the script for Python 3.11 or later and run it with `python`. Recording and audio steps need `ffmpeg` on PATH.
 
 Use only the steps the request needs. Platform subtitles and slides are often enough for an overview or a targeted question; BCut gives a much better transcript of what was said.
 
@@ -30,10 +30,10 @@ Use only the steps the request needs. Platform subtitles and slides are often en
 ## Download
 
 ```sh
-uv run scripts/yanhekit.py login
-uv run scripts/yanhekit.py courses [--term 2026-2027-1]
-uv run scripts/yanhekit.py lectures <course>
-uv run scripts/yanhekit.py download <course> [-l <lecture ID>]... [--subtitles] [--slides] [--video [screen]] [--embed] [--pdf] [-o <workspace>]
+uv run "$YANHEKIT" login
+uv run "$YANHEKIT" courses [--term 2026-2027-1]
+uv run "$YANHEKIT" lectures <course>
+uv run "$YANHEKIT" download <course> [-l <lecture ID>]... [--subtitles] [--slides] [--video [screen]] [--embed] [--pdf] [-o <workspace>]
 ```
 
 Start with `login`, which returns at once while the saved session is valid. Otherwise it opens a local sign-in page, prints its URL and waits, so run it in the background when the harness allows and give the user the URL if no browser window appears. The user completes the password, captcha and SMS steps there. Never ask for or handle the password yourself.
@@ -55,7 +55,7 @@ A recording is 1–2 GB and can outlast a command timeout, so run video download
 ## Transcribe
 
 ```sh
-uv run scripts/yanhekit.py transcribe <lecture | course folder | recording>... [--overwrite]
+uv run "$YANHEKIT" transcribe <lecture | course folder | recording>... [--overwrite]
 ```
 
 BCut writes `.cache/audio.mp3` and `.cache/transcript.tsv` in about a minute per lecture, from the teacher view when both are saved. Lectures with a transcript are skipped, and a course folder covers every downloaded lecture. A recording from elsewhere works from a folder of its own, passed as its `.mp4` path or saved as `录播-教师.mp4`.
@@ -65,9 +65,9 @@ Read the exported `文字稿.txt` rather than the TSV, and clean only what the t
 ## Query, export and embed
 
 ```sh
-uv run scripts/yanhekit.py query <lecture> [--source transcript|subtitles] [--keyword 流水线] [--start 2:30] [--end 5:00]
-uv run scripts/yanhekit.py export <lecture> [--source transcript|subtitles] [--format txt|srt|vtt]...
-uv run scripts/yanhekit.py embed <lecture> [--source transcript|subtitles]
+uv run "$YANHEKIT" query <lecture> [--source transcript|subtitles] [--keyword 流水线] [--start 2:30] [--end 5:00]
+uv run "$YANHEKIT" export <lecture> [--source transcript|subtitles] [--format txt|srt|vtt]...
+uv run "$YANHEKIT" embed <lecture> [--source transcript|subtitles]
 ```
 
 The source is the BCut transcript unless you pass `--source subtitles`. `query` prints matching segments as `[02:30] text` lines, each run after the capture then on screen, such as `slides/008.jpg`; open the slide images for formulas, diagrams and uncertain terms. `export` writes `文字稿.txt` by default, or `字幕.srt` and `字幕.vtt`. `embed` writes `字幕.srt` and puts it into each saved recording as a soft subtitle track without re-encoding, replacing any earlier track.
@@ -75,9 +75,9 @@ The source is the BCut transcript unless you pass `--source subtitles`. `query` 
 ## Slides
 
 ```sh
-uv run scripts/yanhekit.py sheet <lecture> [<capture>...] [--columns 4] [--rows 4]
-uv run scripts/yanhekit.py similar <lecture> [--distance 8]
-uv run scripts/yanhekit.py pdf <lecture> [<capture>...]
+uv run "$YANHEKIT" sheet <lecture> [<capture>...] [--columns 4] [--rows 4]
+uv run "$YANHEKIT" similar <lecture> [--distance 8]
+uv run "$YANHEKIT" pdf <lecture> [<capture>...]
 ```
 
 A capture is its number, such as `44`; `044.jpg` and `slides/044.jpg` work too. `sheet` and `pdf` take every capture when none are given.

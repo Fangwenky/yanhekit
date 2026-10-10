@@ -10,9 +10,9 @@ Claude Code：
 /plugin install yanhekit --marketplace windlandneko/yanhekit
 ```
 
-Codex：把仓库克隆到 `~/.codex/skills/yanhekit`。
+Codex：克隆仓库后，把 `skills/yanhekit/` 目录复制到 `~/.codex/skills/yanhekit/`。
 
-运行需要 [uv](https://docs.astral.sh/uv/) 和 PATH 中的 ffmpeg。没有 uv 时，用 Python 3.11+ 安装 `scripts/yanhekit.py` 头部列出的包。
+运行需要 [uv](https://docs.astral.sh/uv/) 和 PATH 中的 ffmpeg。没有 uv 时，用 Python 3.11+ 安装 `skills/yanhekit/scripts/yanhekit.py` 头部列出的包。
 
 ## 使用
 
@@ -31,7 +31,7 @@ Codex：把仓库克隆到 `~/.codex/skills/yanhekit`。
 
 | 文件 | 内容 |
 | --- | --- |
-| `SKILL.md` | Agent 使用说明：命令、工作区结构和工作流程 |
-| `references/files.md` | 工作区文件格式 |
-| `references/notes.md` | 笔记模板 |
+| `skills/yanhekit/SKILL.md` | Agent 使用说明：命令、工作区结构和工作流程 |
+| `skills/yanhekit/references/files.md` | 工作区文件格式 |
+| `skills/yanhekit/references/notes.md` | 笔记模板 |
 | `AGENTS.md` | 开发约定与代码结构 |

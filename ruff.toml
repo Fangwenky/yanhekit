@@ -1,4 +1,4 @@
-src = ['scripts']
+src = ['skills/yanhekit/scripts']
 line-length = 120
 indent-width = 2
 

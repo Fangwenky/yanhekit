@@ -8,7 +8,7 @@ export default defineConfig({
   resolve: { alias: { '@': resolve(import.meta.dirname, 'src') } },
   server: { proxy: { '/api': { target: 'http://127.0.0.1:5174', changeOrigin: true } } },
   build: {
-    outDir: '../scripts/ui',
+    outDir: '../skills/yanhekit/scripts/ui',
     emptyOutDir: true,
     assetsDir: '.',
     rolldownOptions: { output: { entryFileNames: 'app.js', assetFileNames: 'app[extname]' } },
