@@ -6,12 +6,12 @@ import {
   FileStackIcon,
   FolderIcon,
   GaugeIcon,
+  MonitorIcon,
   PauseIcon,
   PlayIcon,
   PresentationIcon,
   RefreshCwIcon,
   RotateCwIcon,
-  SubtitlesIcon,
   VideoIcon,
   XIcon,
   type LucideIcon,
@@ -19,7 +19,7 @@ import {
 import { AnimatePresence, m } from 'motion/react'
 import { Collapsible } from 'radix-ui'
 
-import type { Course, Job, Lecture, View } from '@/api'
+import type { Course, Job, Lecture } from '@/api'
 import type { ViewProps } from '@/app'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -36,17 +36,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Card, Pending } from '@/controls'
 
 type Action = 'pause' | 'resume' | 'cancel'
 
 const defaults = {
-  video: true,
-  view: 'teacher' as View,
+  teacher: true,
+  screen: false,
   subtitles: true,
   slides: true,
-  embed: false,
   pdf: false,
   overwrite: false,
   connections: '16',
@@ -56,8 +54,8 @@ export function Courses({ state, busy, run, notify }: ViewProps) {
   const course = state.course
   const [selected, setSelected] = useState<string[]>([])
   const [options, setOptions] = useState(defaults)
-  const { video, view, subtitles, slides } = options
-  const content = video || subtitles || slides
+  const { teacher, screen, subtitles, slides } = options
+  const content = teacher || screen || subtitles || slides
   const terms = Map.groupBy(state.courses, (course) => course.term)
   const jobs = Object.values(state.jobs)
   const active = jobs.filter((job) => job.status === 'queued' || job.status === 'running').length
@@ -79,7 +77,7 @@ export function Courses({ state, busy, run, notify }: ViewProps) {
       ...options,
       course_id: course!.id,
       sub_ids: selected,
-      video: video ? view : null,
+      videos: [teacher && 'teacher', screen && 'screen'].filter(Boolean),
       connections: Number(options.connections) || 16,
     })
     if (error) notify(error)
@@ -124,26 +122,18 @@ export function Courses({ state, busy, run, notify }: ViewProps) {
           <Section title="下载内容">
             <Option
               icon={VideoIcon}
-              title="课堂视频"
+              title="教师视频"
               detail="MP4 录像，每节约 1–2 GB"
-              checked={video}
-              onCheckedChange={option('video')}
-            >
-              <ToggleGroup
-                type="single"
-                value={view}
-                onValueChange={(value) => value && option('view')(value as View)}
-                disabled={!video}
-                aria-label="视频画面"
-              >
-                <ToggleGroupItem value="teacher" className="h-7 px-2.5 text-xs">
-                  教师
-                </ToggleGroupItem>
-                <ToggleGroupItem value="screen" className="h-7 px-2.5 text-xs">
-                  屏幕
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </Option>
+              checked={teacher}
+              onCheckedChange={option('teacher')}
+            />
+            <Option
+              icon={MonitorIcon}
+              title="屏幕视频"
+              detail="讲台电脑的屏幕画面，体积相近"
+              checked={screen}
+              onCheckedChange={option('screen')}
+            />
             <Option
               icon={CaptionsIcon}
               title="平台字幕"
@@ -162,13 +152,6 @@ export function Courses({ state, busy, run, notify }: ViewProps) {
           <Collapsible.Root>
             <Collapsible.Content className="overflow-hidden data-open:animate-collapsible-down data-closed:animate-collapsible-up">
               <Section>
-                <Option
-                  icon={SubtitlesIcon}
-                  title="内嵌字幕"
-                  detail="把平台字幕写入视频的字幕轨"
-                  checked={options.embed}
-                  onCheckedChange={option('embed')}
-                />
                 <Option
                   icon={FileStackIcon}
                   title="合成 PDF"
@@ -427,10 +410,16 @@ function Saved({ lecture }: { lecture: Lecture }) {
   )
 }
 
-const tasks = { subtitles: '获取字幕', slides: '下载 PPT 截图', video: '下载视频', embed: '内嵌字幕', pdf: '合成 PDF' }
+const tasks = {
+  subtitles: '获取字幕',
+  slides: '下载 PPT 截图',
+  teacher: '下载教师视频',
+  screen: '下载屏幕视频',
+  pdf: '合成 PDF',
+}
 
 function measured(job: Job) {
-  return job.task === 'video' || job.task === 'slides'
+  return job.task === 'teacher' || job.task === 'screen' || job.task === 'slides'
 }
 
 /** The bar's percentage, or undefined for a sweeping bar while a step without a measure runs. */

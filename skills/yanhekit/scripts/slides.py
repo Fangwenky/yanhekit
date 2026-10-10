@@ -15,9 +15,10 @@ def captures(lecture, numbers=()):
   """Entries of slides/index.json, or those with the given capture numbers in the given order."""
   entries = read_captures(lecture)
   if not entries:
-    raise ValueError(f'{lecture.name} has no captures; download them with --slides')
-  if not all(1 <= n <= len(entries) for n in numbers):
-    raise ValueError(f'Captures run from 1 to {len(entries)}')
+    raise ValueError(f'{lecture.name} has no captures; `download --slides` saves them')
+  missing = [str(n) for n in numbers if not 1 <= n <= len(entries)]
+  if missing:
+    raise ValueError(f'No capture {", ".join(missing)}; captures run from 1 to {len(entries)}')
   return [entries[n - 1] for n in numbers] or entries
 
 
@@ -27,6 +28,8 @@ def sheets(lecture, entries, columns=4, rows=4):
   height = width * 9 // 16
   font = ImageFont.load_default(20)
   paths = []
+  for old in (lecture / '.cache').glob('sheet-*.jpg'):  # sheets of other ranges and layouts
+    old.unlink()
   for start in range(0, len(entries), columns * rows):
     group = entries[start : start + columns * rows]
     sheet = Image.new('RGB', (SHEET_WIDTH, math.ceil(len(group) / columns) * (height + LABEL)), 'white')
@@ -55,7 +58,7 @@ def fingerprint(path, size=16):
   return int(''.join('1' if left > right else '0' for row in rows for left, right in pairwise(row)), 2)
 
 
-def similar(lecture, entries, distance=8):
+def similar(lecture, entries, distance=12):
   """Groups of captures linked through fingerprints that differ in at most `distance` bits, in capture order."""
   prints = [fingerprint(lecture / 'slides' / entry['file']) for entry in entries]
   parent = list(range(len(entries)))
@@ -71,7 +74,7 @@ def similar(lecture, entries, distance=8):
       parent[root(j)] = root(i)
   groups = {}
   for i, entry in enumerate(entries):
-    groups.setdefault(root(i), []).append(entry['file'].removesuffix('.jpg'))
+    groups.setdefault(root(i), []).append(entry)
   return [group for group in groups.values() if len(group) > 1]
 
 

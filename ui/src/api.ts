@@ -24,7 +24,7 @@ export interface Course extends CourseSummary {
 /** A lecture in the download queue; it leaves the queue when finished or cancelled. */
 export interface Job {
   status: 'queued' | 'running' | 'paused' | 'failed'
-  task?: 'subtitles' | 'slides' | 'video' | 'embed' | 'pdf' | 'done'
+  task?: 'subtitles' | 'slides' | View | 'pdf' | 'done'
   fraction?: number
   speed?: number | null
   remaining?: number | null

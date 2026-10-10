@@ -131,8 +131,8 @@ class Downloads:
     """Drop a cancelled lecture and the pieces its recording left behind."""
     del self.jobs[sub_id]
     _, options, lecture = self.orders.pop(sub_id)
-    if options['video']:
-      shutil.rmtree(download.pieces(transcript.recording(lecture, options['video'])), ignore_errors=True)
+    for view in options['videos']:
+      shutil.rmtree(download.pieces(transcript.recording(lecture, view)), ignore_errors=True)
 
   def work(self):
     while True:
@@ -241,6 +241,10 @@ def serve(client, workspace=None, course_id=None):
   if workspace is not None:
     downloads = Downloads(client, workspace, lambda jobs: state.update(jobs=jobs), refresh)
 
+  start()  # a saved session or password signs in before any page opens
+  if signed_in.is_set() and workspace is None:
+    return
+
   app = Flask(__name__, static_folder=None)
   token = secrets.token_urlsafe(32)
 
@@ -300,7 +304,7 @@ def serve(client, workspace=None, course_id=None):
       abort(403)
     data = request.json
     course = client.course(data['course_id'])
-    options = ('video', 'subtitles', 'slides', 'connections', 'overwrite', 'embed', 'pdf')
+    options = ('videos', 'subtitles', 'slides', 'connections', 'overwrite', 'pdf')
     downloads.add(course, data['sub_ids'], {key: data[key] for key in options})
     return {}
 
@@ -318,7 +322,6 @@ def serve(client, workspace=None, course_id=None):
   url = f'{page}/#{token}'
   webbrowser.open(url)
   print(f'{"Download" if workspace else "Sign-in"} page: {url}', flush=True)  # for when no browser opens
-  threading.Thread(target=start, daemon=True).start()
   try:
     if workspace is None:
       signed_in.wait()

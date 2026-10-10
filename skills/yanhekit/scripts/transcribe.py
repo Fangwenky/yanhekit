@@ -63,7 +63,10 @@ class BCut:
     return done['download_url']
 
   def transcribe(self, audio, timeout=7200):
-    task = self.call('POST', '/task', json={'resource': self.upload(audio), 'model_id': str(MODEL)})['task_id']
+    print('  uploading audio', flush=True)
+    resource = self.upload(audio)
+    print('  transcribing', flush=True)
+    task = self.call('POST', '/task', json={'resource': resource, 'model_id': str(MODEL)})['task_id']
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
       result = self.call('GET', '/task/result', params={'model_id': MODEL, 'task_id': task})
@@ -88,9 +91,9 @@ def extract_audio(video, audio):
 def videos(paths):
   """One recording a lecture, the teacher view first, from lecture folders, course folders or .mp4 paths."""
   for path in paths:
-    if path.suffix == '.mp4':
+    if path.is_file():
       yield path
-    else:  # a lecture folder, or a course folder of them
+    else:  # a lecture folder, or a course folder of them; a missing path raises here
       for lecture in [path, *sorted(path.iterdir())]:
         yield from list(recordings(lecture).values())[:1]
 
@@ -109,6 +112,7 @@ def transcribe(paths, overwrite=False):
       continue
     try:
       if overwrite or not (cache / 'audio.mp3').exists():
+        print('  extracting audio', flush=True)
         extract_audio(video, cache / 'audio.mp3')
       rows = bcut.transcribe(cache / 'audio.mp3')
       write_tsv(cache / 'transcript.tsv', rows)

@@ -18,7 +18,6 @@ from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponen
 
 from client import ORIGIN, USER_AGENT
 from slides import pdf as write_pdf
-from transcript import embed as embed_subtitles
 from transcript import read_captures, read_tsv, recording, recordings, replacing, write_tsv
 
 BLOCK = 8 << 20
@@ -218,21 +217,23 @@ def download_slides(session, slides, folder, connections, report):
   write_json(folder / 'index.json', entries)
 
 
-def download(client, course, workspace, sub_ids, *, video=None, subtitles=False, slides=False, embed=False,
-             pdf=False, connections=16, overwrite=False, report, check=None):  # fmt: skip
+def download(client, course, workspace, sub_ids, *, videos=(), subtitles=False, slides=False, pdf=False,
+             connections=16, overwrite=False, report, check=None):  # fmt: skip
   """Fetch the selected resources of each lecture, recording them in course.json as they finish.
 
-  `embed` adds the saved platform subtitles to the saved recordings, and `pdf` combines every saved capture.
+  `pdf` combines every saved capture.
   `report(lecture, task, fraction=0, speed=None, remaining=None)` receives progress; task is subtitles, slides,
-  video, embed, pdf or done. `check()` may raise to stop the download; a recording's finished pieces are kept.
+  a view (teacher or screen), pdf or done. `check()` may raise to stop the download; a recording's finished pieces are kept.
   """
+  if not (videos or subtitles or slides or pdf):
+    raise ValueError('Nothing to download; choose --subtitles, --slides or --video')
   folder = course_folder(workspace, course)
   index = sync_index(course, folder)
   session = MediaSession(client, connections, check)
   for lecture in [lecture for lecture in index['lectures'] if lecture['sub_id'] in sub_ids]:
     name, base = lecture['id'], folder / lecture['id']
     base.mkdir(parents=True, exist_ok=True)
-    if video or 'duration_s' not in lecture:
+    if videos or 'duration_s' not in lecture:
       info = client.lecture(course['id'], lecture['sub_id'])
       lecture['duration_s'] = info['duration_s']
     try:
@@ -250,24 +251,20 @@ def download(client, course, workspace, sub_ids, *, video=None, subtitles=False,
           download_slides(session, captures, base / 'slides', connections, partial(report, lecture, 'slides'))
         lecture['slides'] = len(read_captures(base))
 
-      if video:
-        report(lecture, 'video')
-        path = recording(base, video)
+      for view in videos:
+        report(lecture, view)
+        path = recording(base, view)
         if overwrite or not path.exists():
-          url = info['streams'].get(video)
+          url = info['streams'].get(view)
           if not url:
-            raise NoRecording(name, video)
-          download_video(session, url, path, connections, partial(report, lecture, 'video'))
-        lecture['videos'] = list(recordings(base))
-
-      if embed and lecture.get('subtitles') and recordings(base):
-        report(lecture, 'embed')
-        embed_subtitles(base, 'subtitles')
-
+            raise NoRecording(name, view)
+          download_video(session, url, path, connections, partial(report, lecture, view))
       if pdf and lecture.get('slides'):
         report(lecture, 'pdf')
         write_pdf(base, read_captures(base))
     finally:
+      if videos:
+        lecture['videos'] = list(recordings(base))
       write_json(folder / 'course.json', index)  # what finished before a failure is recorded too
     report(lecture, 'done', 1)
   return folder

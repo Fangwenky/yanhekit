@@ -1,5 +1,6 @@
 """Yanhekt session and course API."""
 
+import argparse
 import hashlib
 import html
 import json
@@ -7,6 +8,7 @@ import os
 import re
 import socket
 import ssl
+import subprocess
 import sys
 import threading
 import time
@@ -169,6 +171,10 @@ def describe(error):
     return f'HTTP {error.response.status_code} from {url.netloc}{url.path}'
   if isinstance(error, requests.RequestException):
     return f'Network error: {type(error).__name__}'
+  if isinstance(error, OSError) and error.filename:
+    return f'{error.strerror}: {os.path.relpath(error.filename)}'
+  if isinstance(error, subprocess.CalledProcessError):
+    return f'{Path(error.cmd[0]).name} failed with exit status {error.returncode}'
   return str(error)
 
 
@@ -178,5 +184,5 @@ def course_id(value):
     return value
   match = re.search(r'[?&]course_id=(\d+)', value)
   if not match:
-    raise ValueError(f'Not a course ID or URL: {value}')
+    raise argparse.ArgumentTypeError(f'{value!r} is not a course ID or coursedetail URL; `courses` lists the IDs')
   return match[1]

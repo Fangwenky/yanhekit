@@ -32,6 +32,16 @@ def read_tsv(path):
     return [(float(row['start_s']), float(row['end_s']), row['text']) for row in csv.DictReader(file, delimiter='\t')]
 
 
+FETCH = {'transcript': 'transcribe', 'subtitles': 'download --subtitles'}
+
+
+def timeline(lecture, source):
+  path = lecture / '.cache' / f'{source}.tsv'
+  if not path.exists():
+    raise ValueError(f'{lecture.name} has no {source}; run `{FETCH[source]}`')
+  return read_tsv(path)
+
+
 VIEWS = {'teacher': '教师', 'screen': '屏幕'}
 
 
@@ -84,7 +94,7 @@ def paragraphs(rows, gap=2, size=180, span=60):
 
 def export(lecture, format, source='transcript'):
   """Write 文字稿.txt as stamped paragraphs, or 字幕.srt or 字幕.vtt with a cue per segment."""
-  rows = read_tsv(lecture / '.cache' / f'{source}.tsv')
+  rows = timeline(lecture, source)
   if format == 'txt':
     lines = [f'[{stamp(start)}] {text}' for start, _, text in paragraphs(rows)]
   else:
@@ -102,7 +112,7 @@ def query(lecture, source='transcript', keyword=None, start=0, end=math.inf):
   captures = read_captures(lecture)
   times = [capture['time_s'] for capture in captures]
   shown = -1
-  for begin, finish, text in read_tsv(lecture / '.cache' / f'{source}.tsv'):
+  for begin, finish, text in timeline(lecture, source):
     if finish >= start and begin <= end and (not keyword or keyword.casefold() in text.casefold()):
       current = bisect_right(times, begin) - 1
       if current > shown:
@@ -111,17 +121,11 @@ def query(lecture, source='transcript', keyword=None, start=0, end=math.inf):
       yield f'[{stamp(begin)}] {text}'
 
 
-def embed(lecture, source='transcript'):
-  """Replace each saved recording with a copy carrying the transcript as a soft subtitle track."""
-  videos = list(recordings(lecture).values())
-  if not videos:
-    raise ValueError(f'{lecture.name} has no recording; download it with --video')
-  subtitles = export(lecture, 'srt', source)
-  for video in videos:
-    with replacing(video) as output:
-      subprocess.run(
-        ['ffmpeg', '-v', 'error', '-y', '-i', video, '-i', subtitles, '-map', '0:v', '-map', '0:a?', '-map', '1:0',
-         '-c', 'copy', '-c:s', 'mov_text', '-metadata:s:s:0', 'language=zho', '-movflags', '+faststart', output],
-        check=True,
-      )  # fmt: skip
-  return videos
+def embed(video, subtitles):
+  """Replace `video` with a copy carrying the .srt or .vtt file as its soft subtitle track, without re-encoding."""
+  with replacing(video) as output:
+    subprocess.run(
+      ['ffmpeg', '-v', 'error', '-y', '-i', video, '-i', subtitles, '-map', '0:v', '-map', '0:a?', '-map', '1:0',
+       '-c', 'copy', '-c:s', 'mov_text', '-metadata:s:s:0', 'language=zho', '-movflags', '+faststart', output],
+      check=True,
+    )  # fmt: skip
