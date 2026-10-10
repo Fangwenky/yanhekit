@@ -1,6 +1,6 @@
 # Note Templates
 
-Lecture notes go in `<course>/<id>/笔记.md` and the course summary in `<course>/课程总结.md`. Keep the sections and headings, and fill them to the depth the request needs.
+Lecture notes go in `<course>/<id>/笔记.md` and the course summary in `<course>/课程总结.md`. Keep the sections and headings, and fill them to the depth the request needs. Maintain one complete version of each document in place: integrate new findings into the relevant sections, consolidate overlapping entries, and correct outdated content while preserving verified material. Do not append update batches, retain revision sections, create versioned copies, or use process wording such as 新增、本次补充 or 第 N 次更新.
 
 - Write `无` under a heading that has nothing.
 - Mark doubtful passages `需确认` with their timestamp instead of guessing.
@@ -72,4 +72,4 @@ Link only files that exist; without a PDF, point the PPT line at `slides/`. Unde
 概括本节主线、关键概念、例题或证明位置。
 ```
 
-Update the summary whenever you write a lecture note: its index row, its 课程内容 entry and the 复习优先 items it affects, all in place. The summary reads as the current review dashboard, without changelog wording such as 新增 or 本次转录.
+Whenever you write a lecture note, integrate its findings into the summary's index row, 课程内容 entry and relevant 复习优先 items so the summary remains a complete current review dashboard.

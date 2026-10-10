@@ -1,37 +1,61 @@
-# yanhekit
+# yanhekit - 延河课堂工具包
 
-延河课堂（aita.yanhekt.cn）课程资料 SKILL：下载回放视频、平台字幕和 PPT 截图，拼接 PDF，用 BCut 转录，再由 Agent 检索材料、整理笔记和回答课程问题。
+新版延河课堂（<https://aita.yanhekt.cn>）工具包。~~其实就是个大号 SKILL~~
+
+本工具包提供了以下能力：下载回放视频、字幕和 PPT，整理课件，字幕转录和内嵌，笔记生成。
 
 ## 安装
 
-Claude Code：
+需要 [uv](https://docs.astral.sh/uv/) 和 [ffmpeg](https://ffmpeg.org/)。也可以不用 uv，在 Python 3.11+ 虚拟环境中安装脚本头部列出的包。
 
-```text
-/plugin install yanhekit --marketplace windlandneko/yanhekit
+直接把本仓库地址发给 Agent，Agent 会自动安装。如果要古法手动安装，使用以下命令：
+
+- Claude Code：
+
+```bash
+/plugin marketplace add windlandneko/yanhekit
+/plugin install yanhekit@yanhekit
 ```
 
-Codex：克隆仓库后，把 `skills/yanhekit/` 目录复制到 `~/.codex/skills/yanhekit/`。
+- Codex：
 
-运行需要 [uv](https://docs.astral.sh/uv/) 和 PATH 中的 ffmpeg。没有 uv 时，用 Python 3.11+ 安装 `skills/yanhekit/scripts/yanhekit.py` 头部列出的包。
+```bash
+codex plugin marketplace add windlandneko/yanhekit
+```
+
+然后在插件目录或者 GUI 界面中找到并安装。
+
+- 其他 Harness：通过 SKILL 方式安装，即 `npx skills add windlandneko/yanhekit -g`，或把 `skills/yanhekit/` 复制到对应目录。
 
 ## 使用
 
-在 Harness 里直接说需求，如“下载这门课本周的回放，整理笔记和作业”。Agent 按 `SKILL.md` 调用命令、读取产物并写笔记。想自己点选课次时，让 Agent 打开下载页面。
+在你最喜欢的 Harness 应用（比如 Codex、Claude Desktop、DeepSeek Harness）中打开工作区与 Agent 对话，就可以通过本插件检索材料、整理笔记和回答课程问题了。以后只需打开同一个工作区即可，不同课程和课次的材料会自动归类整理，可以直接点开查看。
 
-## 设计
+例如，你可以这么问：
 
-- 能力各自独立：课程列表、资源下载、PPT 拼图与相似分组、BCut 转录、检索与导出，组合由 Agent 按任务决定。
-- 脚本做鉴权、媒体签名、并发下载、格式转换，以及拼图、相似分组这类机械处理；挑选 PPT、修订术语、分析内容和写笔记由 Agent 结合转录、PPT 和音频完成。
-- 登录在本地页面完成，Agent 不接触密码。会话 cookie 和学号存在 `~/.config/yanhekit/`，勾选“记住账户”时密码存入系统钥匙串。
-- 联网命令在后台探测校园地址 `10.0.11.240`，证书校验通过后直连，下载速度从公网的约 20–30 MB/s 提到约 85 MB/s；探测不通时照常走公网。
-- 下载页面是命令行的辅助窗口：按学期选课，勾选课次和内容，查看队列进度，并可暂停、继续、重试或取消。
-- 工作区里直接打开看的成品用中文命名，脚本和 Agent 反复读写的材料用英文短名，中间文件集中在 `.cache/`。
+- 上节课点我名了吗？
+- 把昨天的作业帮我做了
+- 明天就要考试了一章没看怎么办，帮帮我
 
-## 文档
+另外还可以让 Agent 在浏览器打开管理页面，手动查看和下载课程资源。
 
-| 文件 | 内容 |
-| --- | --- |
-| `skills/yanhekit/SKILL.md` | Agent 使用说明：命令、工作区结构和工作流程 |
-| `skills/yanhekit/references/files.md` | 工作区文件格式 |
-| `skills/yanhekit/references/notes.md` | 笔记模板 |
-| `AGENTS.md` | 开发约定与代码结构 |
+## 技术细节
+
+- **登录**：在自制的本地网页中完成登录和二次验证，Agent 不会读到密码。其中登录态保存在 `~/.config/yanhekit/` 和系统钥匙串。
+- **下载**：自动探测校园内网并直连，可以跑到 100+ MByte/s。Agent 直接查课程列表、下载录播视频、字幕和 PPT，不用再打开 [AutoSlides](https://github.com/bit-admin/Yanhekt-AutoSlides) 下完视频再看，全流程对话就行。
+- **整理**：PPT 截图可以合成纯图 PDF；调用 B 站必剪接口转录出比延河课堂自带的更准的字幕，并软嵌入视频。
+- **问答与笔记**：Agent 参考字幕文本和 PPT 图片回答课程的具体问题，并为课程和每节课各维护一篇完整的笔记，点名、作业、考试一查便知。
+
+## 免责声明
+
+> 这种东西小范围享受就可以了.jpg
+
+- **用途**：本工具包仅供个人学习和研究使用，不得用于商业或非法用途。
+- **课程内容**：录播涉及老师和同学的隐私与版权，下载和使用时请遵守法律法规和学校规定，不要传播给未经授权的第三方，也不要在其他平台公开分享。
+- **转录**：BCut 转录会把提取的音频上传到 Bilibili 的服务，请确保你有权使用这些音频。结果仅供参考，可能有错漏，漏掉的作业和知识点别怪我喵。
+
+## 鸣谢
+
+- [bit-admin/AutoSlides](https://github.com/bit-admin/Yanhekt-AutoSlides)
+- [Fangwenky/yanhekt-downloader](https://github.com/Fangwenky/yanhekt-downloader)
+- [BIT101-dev/BIT-Login](https://github.com/BIT101-dev/BIT-Login)

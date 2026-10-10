@@ -1,11 +1,12 @@
 ---
 name: yanhekit
-description: Download Yanhekt (延河课堂, aita.yanhekt.cn) lecture recordings, platform subtitles and PPT captures, build slide PDFs, transcribe with BCut, and write notes or answers from the material. Use for Yanhekt course links, BIT lecture replays, local lecture recordings, and requests for lecture transcripts, study notes, review outlines or course questions.
+description: Download Yanhekt (延河课堂, aita.yanhekt.cn) lecture recordings, platform subtitles and PPT captures, build slide PDFs, transcribe with BCut, embed subtitles, and maintain course notes or answer questions from the material. Use for Yanhekt course links, BIT lecture replays, local lecture recordings, and requests for lecture transcripts, study notes, review outlines or course questions.
+allowed-tools: Bash(uv run ${CLAUDE_SKILL_DIR}/scripts/yanhekit.py *)
 ---
 
 # Yanhekit
 
-Resolve this skill's folder from the loaded `SKILL.md` path, then set `YANHEKIT` to the absolute path of its `scripts/yanhekit.py`. Every command below uses that path. Run from the user's workspace, since output goes to the current folder by default; uv installs the script's packages on first use. Without uv, install the packages listed at the top of the script for Python 3.11 or later and run it with `python`. Recording and audio steps need `ffmpeg` on PATH.
+`<yanhekit>` in the commands below is the absolute path of `scripts/yanhekit.py` beside this `SKILL.md`; write it out in each command and run from the user's workspace so course material stays there. Ordinary Python 3.11+ can replace `uv run` once the script's declared dependencies are installed in a virtual environment. Video and audio processing need `ffmpeg` on PATH.
 
 Use only the steps the request needs. Platform subtitles and slides are often enough for an overview or a targeted question; BCut gives a much better transcript of what was said.
 
@@ -30,10 +31,10 @@ Use only the steps the request needs. Platform subtitles and slides are often en
 ## Download
 
 ```sh
-uv run "$YANHEKIT" login
-uv run "$YANHEKIT" courses [--term 2026-2027-1]
-uv run "$YANHEKIT" lectures <course>
-uv run "$YANHEKIT" download <course> [-l <lecture ID>]... [--subtitles] [--slides] [--video [screen]] [--embed] [--pdf] [-o <workspace>]
+uv run <yanhekit> login
+uv run <yanhekit> courses [--term 2026-2027-1]
+uv run <yanhekit> lectures <course>
+uv run <yanhekit> download <course> [-l <lecture ID>]... [--subtitles] [--slides] [--video [screen]] [--embed] [--pdf] [-o <workspace>]
 ```
 
 Start with `login`, which returns at once while the saved session is valid. Otherwise it opens a local sign-in page, prints its URL and waits, so run it in the background when the harness allows and give the user the URL if no browser window appears. The user completes the password, captcha and SMS steps there. Never ask for or handle the password yourself.
@@ -46,7 +47,7 @@ Start with `login`, which returns at once while the saved session is valid. Othe
 - `--embed` adds the saved platform subtitles to the saved recordings as a subtitle track.
 - `--pdf` combines every saved capture into `课件.pdf`.
 
-Subtitles and slides take seconds, so fetch them first. Each lecture's last line gives its duration, subtitle segments, captures and recordings. A full class has hundreds of segments; one with no captures and at most a few dozen segments is an empty class, such as a holiday, so skip its recording and notes. Read the subtitles when unsure.
+Subtitles and slides take seconds, so fetch them first. Each lecture's last line gives its duration, subtitle segments, captures and recordings. A replay with no captures and few subtitle segments may be empty or have incomplete platform material. Read its subtitles and check the course context before skipping its recording or notes.
 
 A recording is 1–2 GB and can outlast a command timeout, so run video downloads in the background when the harness allows. Progress goes to stdout and retries to stderr, and an interrupted recording resumes from its finished pieces. Existing files are kept unless you pass `--overwrite`. `--connections` (default 16) sets parallel requests.
 
@@ -55,19 +56,19 @@ A recording is 1–2 GB and can outlast a command timeout, so run video download
 ## Transcribe
 
 ```sh
-uv run "$YANHEKIT" transcribe <lecture | course folder | recording>... [--overwrite]
+uv run <yanhekit> transcribe <lecture | course folder | recording>... [--overwrite]
 ```
 
-BCut writes `.cache/audio.mp3` and `.cache/transcript.tsv` in about a minute per lecture, from the teacher view when both are saved. Lectures with a transcript are skipped, and a course folder covers every downloaded lecture. A recording from elsewhere works from a folder of its own, passed as its `.mp4` path or saved as `录播-教师.mp4`.
+BCut uploads extracted audio to Bilibili’s transcription service and writes `.cache/audio.mp3` and `.cache/transcript.tsv`, from the teacher view when both are saved. Lectures with a transcript are skipped, and a course folder covers every downloaded lecture. A recording from elsewhere works from a folder of its own, passed as its `.mp4` path or saved as `录播-教师.mp4`.
 
-Read the exported `文字稿.txt` rather than the TSV, and clean only what the task needs: the raw text is enough to index a lecture and find assignments or exam hints. Polish the passages you quote, or the whole transcript when the user wants clean subtitles. BCut and the platform turn course terms into homophones, such as 赌马 for 补码 or 阿斯玛 for ASCII, and garble campus names: `乐学` is the learning platform and `i北理` the campus app built on 钉钉. Collect the course's terms from the slide sheets and replace a recurring error throughout `.cache/transcript.tsv` in one pass, checking its hits with `query --keyword` first when the wrong form is also a real word. Edit other errors in place, check doubtful ones against the nearby slides and the audio, then export again.
+Run `export <lecture>` after transcription to create `文字稿.txt`; `transcribe` saves the timeline only. Read the exported text rather than the TSV, and clean only what the task needs: the raw text is enough to index a lecture and find assignments or exam hints. Polish the passages you quote, or the whole transcript when the user wants clean subtitles. BCut and the platform turn course terms into homophones, such as 赌马 for 补码 or 阿斯玛 for ASCII, and garble campus names: `乐学` is the learning platform and `i北理` the campus app built on 钉钉. Collect the course's terms from the slide sheets and replace a recurring error throughout `.cache/transcript.tsv` in one pass, checking its hits with `query --keyword` first when the wrong form is also a real word. Edit other errors in place, check doubtful ones against the nearby slides and the audio, then export again and run `embed <lecture>` for saved recordings.
 
 ## Query, export and embed
 
 ```sh
-uv run "$YANHEKIT" query <lecture> [--source transcript|subtitles] [--keyword 流水线] [--start 2:30] [--end 5:00]
-uv run "$YANHEKIT" export <lecture> [--source transcript|subtitles] [--format txt|srt|vtt]...
-uv run "$YANHEKIT" embed <lecture> [--source transcript|subtitles]
+uv run <yanhekit> query <lecture> [--source transcript|subtitles] [--keyword 流水线] [--start 2:30] [--end 5:00]
+uv run <yanhekit> export <lecture> [--source transcript|subtitles] [--format txt|srt|vtt]...
+uv run <yanhekit> embed <lecture> [--source transcript|subtitles]
 ```
 
 The source is the BCut transcript unless you pass `--source subtitles`. `query` prints matching segments as `[02:30] text` lines, each run after the capture then on screen, such as `slides/008.jpg`; open the slide images for formulas, diagrams and uncertain terms. `export` writes `文字稿.txt` by default, or `字幕.srt` and `字幕.vtt`. `embed` writes `字幕.srt` and puts it into each saved recording as a soft subtitle track without re-encoding, replacing any earlier track.
@@ -75,9 +76,9 @@ The source is the BCut transcript unless you pass `--source subtitles`. `query` 
 ## Slides
 
 ```sh
-uv run "$YANHEKIT" sheet <lecture> [<capture>...] [--columns 4] [--rows 4]
-uv run "$YANHEKIT" similar <lecture> [--distance 8]
-uv run "$YANHEKIT" pdf <lecture> [<capture>...]
+uv run <yanhekit> sheet <lecture> [<capture>...] [--columns 4] [--rows 4]
+uv run <yanhekit> similar <lecture> [--distance 8]
+uv run <yanhekit> pdf <lecture> [<capture>...]
 ```
 
 A capture is its number, such as `44`; `044.jpg` and `slides/044.jpg` work too. `sheet` and `pdf` take every capture when none are given.
@@ -90,7 +91,7 @@ A capture is its number, such as `44`; `044.jpg` and `slides/044.jpg` work too. 
 
 ## Notes and analysis
 
-Write `笔记.md` and `课程总结.md` with the templates in [references/notes.md](references/notes.md).
+Maintain `笔记.md` and `课程总结.md` with the templates in [references/notes.md](references/notes.md).
 
 A class spans two or three 45-minute periods with 5-minute breaks. The recording starts on time and may run past the end, so expect stray talk or silence around each break and at the end.
 

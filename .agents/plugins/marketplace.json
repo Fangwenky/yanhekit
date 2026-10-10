@@ -1,0 +1,12 @@
+{
+  "name": "yanhekit",
+  "interface": { "displayName": "Yanhekit" },
+  "plugins": [
+    {
+      "name": "yanhekit",
+      "source": { "source": "local", "path": "./" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_USE" },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "name": "yanhekit",
-  "description": "Yanhekt (延河课堂) course material skill",
+  "description": "Yanhekt (延河课堂) toolkit",
   "owner": {
     "name": "windlandneko"
   },
@@ -8,7 +8,7 @@
     {
       "name": "yanhekit",
       "source": "./",
-      "description": "Recordings, slide PDFs, BCut transcripts and course notes from Yanhekt (延河课堂)"
+      "description": "Yanhekt toolkit: download recordings, subtitles and PPT captures, build slide PDFs, transcribe and embed subtitles, and maintain course notes."
     }
   ]
 }
