@@ -1,7 +1,7 @@
 interface:
-  display_name: "Yanhekt ASR"
-  short_description: "Course recordings to SRT, TXT, JSONL, and review notes"
-  default_prompt: "Use $yanhekt-asr to process course recordings into SRT/TXT/JSONL transcripts, lecture notes, and a course summary."
+  display_name: "Yanhekit"
+  short_description: "Recordings, slide PDFs, BCut transcripts and course notes"
+  default_prompt: "Use $yanhekit to acquire or analyze the course material needed for my request."
 
 policy:
   allow_implicit_invocation: true

@@ -1,0 +1,7 @@
+{
+  "name": "yanhekit",
+  "version": "1.0.0",
+  "description": "Recordings, slide PDFs, BCut transcripts and course notes from Yanhekt (延河课堂)",
+  "author": { "name": "windlandneko" },
+  "keywords": ["yanhekt", "lecture", "transcript", "notes"]
+}

@@ -1,0 +1,182 @@
+"""Yanhekt session and course API."""
+
+import hashlib
+import html
+import json
+import os
+import re
+import socket
+import ssl
+import sys
+import threading
+import time
+from http.cookiejar import MozillaCookieJar
+from pathlib import Path
+from urllib.parse import unquote, urlencode, urlsplit
+
+import certifi
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
+
+ORIGIN = 'https://aita.yanhekt.cn'
+CAMPUS_IP = '10.0.11.240'  # aita.yanhekt.cn inside the campus network
+CONFIG = Path.home() / '.config' / 'yanhekit'
+USER_AGENT = (
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
+)
+STREAMS = {'teacher': '3', 'screen': '2'}  # video_list[].type
+
+
+class APIError(Exception):
+  pass
+
+
+class Yanhekt:
+  def __init__(self):
+    CONFIG.mkdir(parents=True, exist_ok=True, mode=0o700)
+    self.session = requests.Session()
+    self.session.headers.update({'User-Agent': USER_AGENT, 'Referer': ORIGIN + '/'})
+    retry = Retry(3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+    self.session.mount('https://', HTTPAdapter(max_retries=retry))
+    self.session.cookies = MozillaCookieJar(CONFIG / 'cookies.txt')
+    if (CONFIG / 'cookies.txt').exists():
+      self.session.cookies.load(ignore_discard=True)
+    self.profile = None
+
+  def authenticate(self):
+    """Use the saved `_token` cookie if Yanhekt still accepts it."""
+    token = next((c.value for c in self.session.cookies if c.name == '_token'), '')
+    jwt = re.search(r'eyJ[\w-]+\.[\w-]+\.[\w-]+', unquote(token))
+    if not jwt:
+      return False
+    self.session.headers['Authorization'] = 'Bearer ' + jwt[0]
+    response = self.session.get(ORIGIN + '/userapi/v1/infosimple', timeout=30)
+    body = response.json() if response.ok else {}
+    if body.get('code') != 200:
+      del self.session.headers['Authorization']
+      return False
+    self.profile = body['params']
+    self.session.cookies.save(ignore_discard=True, ignore_expires=True)
+    os.chmod(CONFIG / 'cookies.txt', 0o600)
+    return True
+
+  def get(self, path, **params):
+    response = self.session.get(ORIGIN + path, params=params, timeout=30)
+    response.raise_for_status()
+    body = response.json()
+    if body['code'] not in (0, 10002):  # 10002: nothing recorded
+      raise APIError(f'{path}: {body.get("msg") or body["code"]}')
+    return body
+
+  def courses(self):
+    """Enrolled courses, newest term first."""
+    courses, page = [], 1
+    while True:
+      response = self.session.get(
+        ORIGIN + '/vlabpassportapi/v1/account-profile/course',
+        params={'force_mycourse': 1, 'nowpage': page, 'per-page': 100},
+        timeout=30,
+      )
+      response.raise_for_status()
+      result = response.json()['params']['result']
+      courses += [
+        {'id': str(row['Id']), 'title': html.unescape(row['Title']), 'teacher': row['Teacher'], 'term': row['TermName']}
+        for row in result['data']
+      ]
+      if not result['data'] or len(courses) >= result['total']:
+        return courses
+      page += 1
+
+  def course(self, course_id):
+    """Course details with its replays in class order."""
+    data = self.get('/courseapi/v3/multi-search/get-course-detail', course_id=course_id)['data']
+
+    def replays(node):  # sub_list nests year -> month -> week -> [lecture]
+      if isinstance(node, dict):
+        node = node.values()
+      for item in node:
+        if isinstance(item, dict) and 'sub_title' in item:
+          if item['playback_status'] == '1':
+            yield item
+        else:
+          yield from replays(item)
+
+    rows = sorted(replays(data['sub_list']), key=lambda row: int(row['class_begin']))
+    return {
+      'id': course_id,
+      'title': data['title'],
+      'teacher': data['realname'],
+      'term': data['term_name'],
+      'replays': [{'sub_id': row['id'], 'title': row['sub_title']} for row in rows],
+    }
+
+  def lecture(self, course_id, sub_id):
+    """Duration and playable stream URLs of one replay."""
+    data = self.get('/courseapi/v3/portal-home-setting/get-sub-info', course_id=course_id, sub_id=sub_id)['data']
+    ready = {str(v['type']): v['preview_url'] for v in data['video_list'].values() if str(v['status']) == '2'}
+    streams = {name: ready[kind] for name, kind in STREAMS.items() if kind in ready}
+    return {'duration_s': float(data['duration']), 'streams': streams}
+
+  def subtitles(self, sub_id):
+    body = self.get('/courseapi/v3/web-socket/search-trans-result', sub_id=sub_id, format='json')
+    segments = (segment for group in body['list'] for segment in group['all_content'])
+    rows = [(float(s['BeginSec']), float(s['EndSec']), ' '.join(s['Text'].split())) for s in segments]
+    return sorted(row for row in rows if row[2])
+
+  def slides(self, course_id, sub_id):
+    """(capture second, image URL) pairs in capture order."""
+    rows, page = [], 1
+    while True:
+      body = self.get('/pptnote/v1/schedule/search-ppt', course_id=course_id, sub_id=sub_id, page=page, per_page=100)
+      rows += body['list']
+      if not body['list'] or len(rows) >= int(body['total']):
+        break
+      page += 1
+    return sorted((float(row['created_sec']), json.loads(row['content'])['pptimgurl']) for row in rows)
+
+  def sign(self, url):
+    """Replace the `t` query that /play/ media requires; it is bound to the path and the current second."""
+    parts = urlsplit(url)
+    user, now = str(self.profile['id']), str(int(time.time()))
+    secret = parts.path + user + str(self.profile['tenant_id']) + str(self.profile['phone'])[::-1] + now
+    digest = hashlib.md5(secret.encode()).hexdigest()
+    return parts._replace(query=urlencode({'t': f'{user}-{now}-{digest}'})).geturl()
+
+
+def upgrade_to_campus():
+  """Probe the campus address in the background; once it shows the site's certificate, new connections use it."""
+
+  def probe():
+    host = urlsplit(ORIGIN).hostname
+    context = ssl.create_default_context(cafile=certifi.where())
+    try:
+      with socket.create_connection((CAMPUS_IP, 443), timeout=3) as connection:
+        context.wrap_socket(connection, server_hostname=host).close()
+    except OSError:
+      return
+    resolve = socket.getaddrinfo  # requests resolves through it; the URL host still sets SNI and certificate checks
+    socket.getaddrinfo = lambda name, *args, **kwargs: resolve(CAMPUS_IP if name == host else name, *args, **kwargs)
+    print(f'Campus network: connecting to {host} at {CAMPUS_IP}', file=sys.stderr, flush=True)
+
+  threading.Thread(target=probe, daemon=True).start()
+
+
+def describe(error):
+  """Error text without query strings, which may carry signatures."""
+  if isinstance(error, requests.HTTPError):
+    url = urlsplit(error.response.url)
+    return f'HTTP {error.response.status_code} from {url.netloc}{url.path}'
+  if isinstance(error, requests.RequestException):
+    return f'Network error: {type(error).__name__}'
+  return str(error)
+
+
+def course_id(value):
+  """Accept a numeric course ID or a coursedetail URL."""
+  if value.isdigit():
+    return value
+  match = re.search(r'[?&]course_id=(\d+)', value)
+  if not match:
+    raise ValueError(f'Not a course ID or URL: {value}')
+  return match[1]

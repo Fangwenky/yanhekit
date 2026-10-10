@@ -1,0 +1,14 @@
+{
+  "name": "yanhekit",
+  "description": "Yanhekt (延河课堂) course material skill",
+  "owner": {
+    "name": "windlandneko"
+  },
+  "plugins": [
+    {
+      "name": "yanhekit",
+      "source": "./",
+      "description": "Recordings, slide PDFs, BCut transcripts and course notes from Yanhekt (延河课堂)"
+    }
+  ]
+}
